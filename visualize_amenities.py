@@ -33,12 +33,12 @@ def create_combined_map():
     print(f"Merged data contains {len(gdf)} SA2 areas with complete data")
     
     # OPTIMIZATION 1: Filter to Melbourne metropolitan area only
-    # Define Melbourne bounding box (approximate)
+    # Define Melbourne bounding box (expanded to include outer suburbs)
     melbourne_bbox = {
-        'min_lat': -38.5,
-        'max_lat': -37.3,
-        'min_lon': 144.5,
-        'max_lon': 145.8
+        'min_lat': -38.3,   # Expanded south to include Frankston, Dandenong areas
+        'max_lat': -37.2,   # Expanded north to include Whittlesea, Nillumbik areas  
+        'min_lon': 144.3,   # Expanded west to include Melton, Wyndham areas
+        'max_lon': 145.9    # Expanded east to include Yarra Ranges, Knox areas
     }
     
     # Filter geometries to Melbourne area
