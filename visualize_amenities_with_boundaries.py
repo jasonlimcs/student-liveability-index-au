@@ -35,10 +35,10 @@ def create_combined_map():
     # Filter to Melbourne metropolitan area only
     print("Filtering to Melbourne metropolitan area...")
     melbourne_bbox = {
-        'min_lat': -38.3,   # Expanded south to include Frankston, Dandenong areas
-        'max_lat': -37.2,   # Expanded north to include Whittlesea, Nillumbik areas  
-        'min_lon': 144.3,   # Expanded west to include Melton, Wyndham areas
-        'max_lon': 145.9    # Expanded east to include Yarra Ranges, Knox areas
+        'min_lat': -38.2255,   # Expanded south to include Frankston, Dandenong areas
+        'max_lat': -37.5,   # Expanded north to include Whittlesea, Nillumbik areas  
+        'min_lon': 144.18,   # Expanded west to include Melton, Wyndham areas
+        'max_lon': 145.375   # Expanded east to include Yarra Ranges, Knox areas
     }
     
     # Filter geometries to Melbourne area
@@ -61,7 +61,7 @@ def create_combined_map():
     # Load amenities data
     print("Loading amenities data...")
     try:
-        df_amenities = pd.read_csv('data/processed/melbourne_amenities_20250717_170324.csv')
+        df_amenities = pd.read_csv('data/processed/melbourne_amenities_improved_20250718_175145.csv')
         print(f"Loaded {len(df_amenities)} amenity records")
         print("\nBreakdown by category:")
         print(df_amenities['category'].value_counts())
