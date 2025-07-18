@@ -4,6 +4,7 @@ import folium
 from folium import plugins
 from folium.features import GeoJsonTooltip
 import numpy as np
+from datetime import datetime
 
 def create_combined_map():
     """Create an interactive folium map showing Melbourne SA2 demographics and amenities."""
@@ -84,7 +85,7 @@ def create_combined_map():
     
     # Load amenities data
     print("Loading amenities data...")
-    df_amenities = pd.read_csv('data/processed/melbourne_amenities_20250717_170324.csv')
+    df_amenities = pd.read_csv('data/processed/melbourne_amenities_improved_20250718_175145.csv')
     print(f"Loaded {len(df_amenities)} amenity records")
     print("\nBreakdown by category:")
     print(df_amenities['category'].value_counts())
@@ -421,12 +422,12 @@ if __name__ == "__main__":
     # Create the combined map
     try:
         map_obj, amenities_data, demographic_data = create_combined_map()
-        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         # Analyze the data
         category_counts, suburb_counts = analyze_amenities(amenities_data, demographic_data)
         
         # Save the map
-        output_file = 'melbourne_combined_map.html'
+        output_file = f'melbourne_combined_map_{timestamp}.html'
         map_obj.save(output_file)
         print(f"\nCombined map saved as: {output_file}")
         print("Open this file in your web browser to view the interactive map!")
@@ -438,7 +439,7 @@ if __name__ == "__main__":
         map_obj, amenities_data = create_amenities_only_map()
         category_counts, suburb_counts = analyze_amenities(amenities_data)
         
-        output_file = 'melbourne_amenities_map.html'
+        output_file = 'melbourne_amenities_map_{timestamp}.html'
         map_obj.save(output_file)
         print(f"\nAmenities map saved as: {output_file}")
         print("Open this file in your web browser to view the interactive map!")
