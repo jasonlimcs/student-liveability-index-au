@@ -61,7 +61,7 @@ def create_combined_map():
     # Load amenities data
     print("Loading amenities data...")
     try:
-        df_amenities = pd.read_csv('data/processed/melbourne_amenities_improved_20250718_175145.csv')
+        df_amenities = pd.read_csv('data/processed/melbourne_amenities_improved_20250718_175145_cleaned_20250718_191258.csv')
         print(f"Loaded {len(df_amenities)} amenity records")
         print("\nBreakdown by category:")
         print(df_amenities['category'].value_counts())

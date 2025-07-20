@@ -1,0 +1,5 @@
+requests
+pandas
+supabase
+python-dotenv
+datetime
