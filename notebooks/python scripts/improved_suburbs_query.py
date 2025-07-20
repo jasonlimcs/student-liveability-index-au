@@ -1,4 +1,7 @@
 import requests
+import sys
+sys.path.append('../../src')
+from data.supabase_loader import load_amenities_data, get_unique_suburbs
 
 def get_all_melbourne_suburbs():
     """Get all suburbs in Melbourne using an improved query that includes ways and nodes."""
@@ -72,8 +75,13 @@ def compare_with_original():
     """Compare with the original amenities dataset."""
     import pandas as pd
     
-    # Get current amenities suburbs
-    df = pd.read_csv('data/processed/melbourne_amenities_20250717_170324.csv')
+    # Get current amenities suburbs from Supabase
+    print("Loading amenities data from database...")
+    df = load_amenities_data()
+    if df.empty:
+        print("No amenities data found in database")
+        return
+    
     current_suburbs = set(df['suburb'].unique())
     
     # Get improved suburbs list

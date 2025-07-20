@@ -4,6 +4,11 @@ import folium
 from folium import plugins
 from folium.features import GeoJsonTooltip
 import numpy as np
+import sys
+
+# Add data loading modules
+sys.path.append('src')
+from data.supabase_loader import load_amenities_data, load_demographics_data
 
 def create_combined_map():
     """Create an interactive folium map showing Melbourne SA2 demographics and amenities with proper boundaries."""
@@ -11,7 +16,7 @@ def create_combined_map():
     print("Loading demographic and geographic data...")
     # Load demographics and SA2 geometry data
     try:
-        demographics = pd.read_csv("data/processed/abs_demographics_merged.csv")
+        demographics = load_demographics_data()
         gdf_sa2 = gpd.read_file("data/external/SA2_2021_AUST_GDA2020.shp")
         print(f"Loaded demographics for {len(demographics)} SA2 areas")
         print(f"Loaded geometry data for {len(gdf_sa2)} SA2 areas")
@@ -61,12 +66,17 @@ def create_combined_map():
     # Load amenities data
     print("Loading amenities data...")
     try:
-        df_amenities = pd.read_csv('data/processed/melbourne_amenities_improved_20250718_175145_cleaned_20250718_191258.csv')
-        print(f"Loaded {len(df_amenities)} amenity records")
-        print("\nBreakdown by category:")
-        print(df_amenities['category'].value_counts())
-    except FileNotFoundError:
-        print("Amenities data not found, creating map with demographics only")
+        df_amenities = load_amenities_data()
+        if not df_amenities.empty:
+            print(f"Loaded {len(df_amenities)} amenity records")
+            print("\nBreakdown by category:")
+            print(df_amenities['category'].value_counts())
+        else:
+            print("No amenities data found in database")
+            df_amenities = pd.DataFrame()
+    except Exception as e:
+        print(f"Error loading amenities from database: {e}")
+        print("Creating map with demographics only")
         df_amenities = pd.DataFrame()
     
     # Create base map centered on Melbourne
@@ -250,11 +260,14 @@ def create_combined_map():
 def create_amenities_only_map():
     """Fallback function to create amenities-only map if demographic data is unavailable."""
     
-    print("Loading amenities data...")
+    print("Loading amenities data from database...")
     try:
-        df = pd.read_csv('data/processed/melbourne_amenities_20250717_170324.csv')
-    except FileNotFoundError:
-        print("ERROR: Amenities data file not found!")
+        df = load_amenities_data()
+        if df.empty:
+            print("ERROR: No amenities data found in database!")
+            return None, None
+    except Exception as e:
+        print(f"ERROR: Failed to load amenities from database: {e}")
         return None, None
     
     print(f"Loaded {len(df)} amenity records")
