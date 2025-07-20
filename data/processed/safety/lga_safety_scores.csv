@@ -1,0 +1,17 @@
+lga,total_crime_count,avg_crime_rate_per_100k,violent_crime_count,property_crime_count,safety_score,safety_category,year,year_ending
+Banyule,9159,93.11,1303,4951,89.1,High,2025,March
+Nillumbik,2367,61.73,368,1405,92.8,High,2025,March
+Boroondara,7698,62.14,1170,5415,92.7,High,2025,March
+Knox,4888,82.78,2126,2762,90.3,High,2025,March
+Brimbank,10144,62.87,2605,4063,92.6,High,2025,March
+Cardinia,6773,67.22,1580,3956,92.1,High,2025,March
+Casey,10012,32.84,4390,3415,96.2,High,2025,March
+Darebin,8397,67.41,2085,3985,92.1,High,2025,March
+Frankston,9832,85.61,2694,3539,90.0,High,2025,March
+Monash,4,1.9,0,0,99.8,High,2025,March
+Bayside,4932,64.06,602,3187,92.5,High,2025,March
+Glen Eira,7044,56.91,1228,4401,93.3,High,2025,March
+Wyndham,4,1.1,0,4,99.9,High,2025,March
+Hobsons Bay,6434,99.12,1027,3887,88.4,High,2025,March
+Hume,11508,50.08,3692,4537,94.1,High,2025,March
+Kingston,8761,67.82,1758,3993,92.1,High,2025,March
