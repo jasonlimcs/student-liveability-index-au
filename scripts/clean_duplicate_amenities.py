@@ -228,7 +228,7 @@ def analyze_duplicates_detailed(input_file):
 
 if __name__ == "__main__":
     # Configuration
-    input_file = "data/processed/melbourne_amenities_improved_20250718_175145.csv"
+    input_file = "../data/processed/melbourne_amenities_improved_20250718_175145.csv"
     
     print("Choose an option:")
     print("1. Analyze duplicates (no changes)")

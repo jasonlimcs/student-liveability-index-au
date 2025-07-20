@@ -7,7 +7,7 @@ import numpy as np
 import sys
 
 # Add data loading modules
-sys.path.append('src')
+sys.path.append('../src')
 from data.supabase_loader import load_amenities_data, load_demographics_data
 
 def create_combined_map():
@@ -17,7 +17,7 @@ def create_combined_map():
     # Load demographics and SA2 geometry data
     try:
         demographics = load_demographics_data()
-        gdf_sa2 = gpd.read_file("data/external/SA2_2021_AUST_GDA2020.shp")
+        gdf_sa2 = gpd.read_file("../data/external/SA2_2021_AUST_GDA2020.shp")
         print(f"Loaded demographics for {len(demographics)} SA2 areas")
         print(f"Loaded geometry data for {len(gdf_sa2)} SA2 areas")
     except FileNotFoundError as e:
@@ -389,7 +389,7 @@ if __name__ == "__main__":
             exit(1)
         
         # Save the map
-        output_file = 'melbourne_combined_map.html'
+        output_file = '../output/melbourne_combined_map.html'
         map_obj.save(output_file)
         print(f"\nCombined map saved as: {output_file}")
         print("Open this file in your web browser to view the interactive map!")
@@ -410,7 +410,7 @@ if __name__ == "__main__":
             print("Failed to create any map!")
             exit(1)
         
-        output_file = 'melbourne_amenities_map.html'
+        output_file = '../output/melbourne_amenities_map.html'
         map_obj.save(output_file)
         print(f"\nAmenities map saved as: {output_file}")
         print("Open this file in your web browser to view the interactive map!") 

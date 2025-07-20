@@ -5,7 +5,7 @@ from supabase import create_client, Client
 from datetime import datetime
 
 # Add config directory to path
-sys.path.append('config')
+sys.path.append('../config')
 from supabase_config import SUPABASE_URL, SUPABASE_KEY
 
 def create_supabase_client():
@@ -176,7 +176,7 @@ def main():
         print("  --create-table  Show SQL to create the table")
         print("  --stats         Show database statistics after upload")
         print("\nExample:")
-        print("  python upload_to_supabase.py data/processed/melbourne_amenities_improved_20250718_175145_cleaned_20250718_191258.csv")
+        print("  python upload_to_supabase.py ../data/processed/melbourne_amenities_improved_20250718_175145_cleaned_20250718_191258.csv")
         print("\nTo create table:")
         print("  python upload_to_supabase.py --create-table")
         return

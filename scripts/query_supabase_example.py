@@ -3,7 +3,7 @@ import pandas as pd
 from supabase import create_client, Client
 
 # Add config directory to path
-sys.path.append('config')
+sys.path.append('../config')
 from supabase_config import SUPABASE_URL, SUPABASE_KEY
 
 def create_supabase_client():

@@ -12,7 +12,7 @@ def test_supabase_loader():
     print("=== Testing Supabase Data Loader ===")
     
     try:
-        sys.path.append('src')
+        sys.path.append('../src')
         from data.supabase_loader import SupabaseDataLoader, load_amenities_data
         
         # Test connection
@@ -45,7 +45,7 @@ def test_generic_loader():
     print("\n=== Testing Generic Data Loader ===")
     
     try:
-        sys.path.append('src')
+        sys.path.append('../src')
         from data.load_data import load_amenities, load_demographics
         
         # Test amenities loading (should use Supabase)
@@ -75,7 +75,7 @@ def test_visualization_compatibility():
     
     try:
         # Test the updated visualization functions
-        sys.path.append('src')
+        sys.path.append('../src')
         from data.supabase_loader import load_amenities_data, load_demographics_data
         
         amenities = load_amenities_data()
@@ -103,7 +103,7 @@ def test_data_quality():
     print("\n=== Testing Data Quality ===")
     
     try:
-        sys.path.append('src')
+        sys.path.append('../src')
         from data.supabase_loader import load_amenities_data
         
         df = load_amenities_data()
