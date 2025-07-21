@@ -8,61 +8,24 @@ import sys
 
 # Add data loading modules
 sys.path.append('../src')
-from data.supabase_loader import load_amenities_data, load_demographics_data
+from data.supabase_loader import load_amenities_data, load_demographics_data, load_safety_scores
 
 def create_combined_map():
     """Create an interactive folium map showing Melbourne SA2 demographics and amenities with proper boundaries."""
     
     print("Loading demographic and geographic data...")
-    # Load demographics and SA2 geometry data
+    demographics = None
+    gdf_sa2 = None
     try:
         demographics = load_demographics_data()
         gdf_sa2 = gpd.read_file("../data/external/SA2_2021_AUST_GDA2020.shp")
         print(f"Loaded demographics for {len(demographics)} SA2 areas")
         print(f"Loaded geometry data for {len(gdf_sa2)} SA2 areas")
-    except FileNotFoundError as e:
+    except Exception as e:
         print(f"Error loading demographic/geographic data: {e}")
-        print("Creating map with amenities only...")
-        return create_amenities_only_map()
-    
-    # Prepare SA2 data
-    gdf_sa2 = gdf_sa2[['SA2_CODE21', 'geometry']]
-    gdf_sa2.columns = ['sa2_code', 'geometry']
-    gdf_sa2['sa2_code'] = gdf_sa2['sa2_code'].astype(str)
-    demographics['sa2_code'] = demographics['sa2_code'].astype(str)
-    
-    # Merge demographics with geometry
-    gdf = gdf_sa2.merge(demographics, on='sa2_code', how='inner')
-    gdf = gdf.replace([np.inf, -np.inf], np.nan).dropna()
-    gdf = gdf.to_crs(epsg=4326)
-    print(f"Merged data contains {len(gdf)} SA2 areas with complete data")
-    
-    # Filter to Melbourne metropolitan area only
-    print("Filtering to Melbourne metropolitan area...")
-    melbourne_bbox = {
-        'min_lat': -38.2255,   # Expanded south to include Frankston, Dandenong areas
-        'max_lat': -37.5,   # Expanded north to include Whittlesea, Nillumbik areas  
-        'min_lon': 144.18,   # Expanded west to include Melton, Wyndham areas
-        'max_lon': 145.375   # Expanded east to include Yarra Ranges, Knox areas
-    }
-    
-    # Filter geometries to Melbourne area
-    gdf_bounds = gdf.bounds
-    melbourne_mask = (
-        (gdf_bounds['miny'] >= melbourne_bbox['min_lat']) &
-        (gdf_bounds['maxy'] <= melbourne_bbox['max_lat']) &
-        (gdf_bounds['minx'] >= melbourne_bbox['min_lon']) &
-        (gdf_bounds['maxx'] <= melbourne_bbox['max_lon'])
-    )
-    gdf = gdf[melbourne_mask].copy()
-    print(f"Filtered to {len(gdf)} SA2 areas within Melbourne metropolitan area")
-    
-    # Optimize geometries for web display
-    print("Optimizing geometries for web display...")
-    # Simplify geometries to reduce file size while maintaining shape
-    tolerance = 0.001  # About 100m at Melbourne's latitude
-    gdf['geometry'] = gdf['geometry'].simplify(tolerance, preserve_topology=True)
-    
+        demographics = None
+        gdf_sa2 = None
+
     # Load amenities data
     print("Loading amenities data...")
     try:
@@ -76,9 +39,8 @@ def create_combined_map():
             df_amenities = pd.DataFrame()
     except Exception as e:
         print(f"Error loading amenities from database: {e}")
-        print("Creating map with demographics only")
         df_amenities = pd.DataFrame()
-    
+
     # Create base map centered on Melbourne
     melbourne_center = [-37.8136, 144.9631]
     m = folium.Map(
@@ -86,72 +48,172 @@ def create_combined_map():
         zoom_start=10,
         tiles='CartoDB positron'
     )
-    
-    # Add additional tile layers
     folium.TileLayer('OpenStreetMap').add_to(m)
     folium.TileLayer('CartoDB dark_matter').add_to(m)
-    
-    # Add SA2 Choropleth Layer with proper boundaries
-    metric = 'rent_to_income_ratio'
-    tooltip_fields = ['sa2_code', 'median_weekly_rent', 'median_weekly_income', 'rent_to_income_ratio']
-    
-    print("Adding SA2 choropleth layer with proper boundaries...")
-    
-    # Create choropleth layer
-    choropleth = folium.Choropleth(
-        geo_data=gdf,
-        name='Rent to Income Ratio',
-        data=gdf,
-        columns=['sa2_code', metric],
-        key_on='feature.properties.sa2_code',
-        fill_color='YlOrRd',
-        fill_opacity=0.6,
-        line_opacity=0.4,
-        line_weight=1,
-        nan_fill_color='lightgray',
-        legend_name='Rent to Income Ratio'
-    ).add_to(m)
-    
-    # CRITICAL: Add interactive GeoJson layer with actual geometries for proper boundaries
-    geojson_layer = folium.GeoJson(
-        gdf,
-        name='SA2 Boundaries & Info',
-        style_function=lambda feature: {
-            'fillColor': 'transparent',
-            'color': '#2c3e50',  # Dark blue border
-            'weight': 2,
-            'opacity': 0.8,
-            'fillOpacity': 0,
-            # Highlight style on hover/click
-            'dashArray': '0'
-        },
-        highlight_function=lambda feature: {
-            'fillColor': '#3498db',  # Light blue fill on hover
-            'color': '#2980b9',      # Darker blue border on hover
-            'weight': 3,
-            'opacity': 1.0,
-            'fillOpacity': 0.3
-        },
-        tooltip=GeoJsonTooltip(
-            fields=tooltip_fields,
-            aliases=['SA2 Code:', 'Weekly Rent ($):', 'Weekly Income ($):', 'Rent/Income Ratio:'],
-            localize=True,
-            sticky=True,
-            labels=True,
-            style="""
-                background-color: white;
-                border: 2px solid black;
-                border-radius: 3px;
-                box-shadow: 3px;
-            """
-        ),
-        popup=folium.Popup(max_width=300)
-    ).add_to(m)
-    
+
+    # Try to add SA2 choropleth if possible
+    if demographics is not None and gdf_sa2 is not None and not demographics.empty:
+        try:
+            gdf_sa2 = gdf_sa2[['SA2_CODE21', 'geometry']]
+            gdf_sa2.columns = ['sa2_code', 'geometry']
+            gdf_sa2['sa2_code'] = gdf_sa2['sa2_code'].astype(str)
+            demographics['sa2_code'] = demographics['sa2_code'].astype(str)
+            gdf = gdf_sa2.merge(demographics, on='sa2_code', how='inner')
+            gdf = gdf.replace([np.inf, -np.inf], np.nan).dropna()
+            gdf = gdf.to_crs(epsg=4326)
+            print(f"Merged data contains {len(gdf)} SA2 areas with complete data")
+            # Filter to Melbourne area
+            gdf_bounds = gdf.bounds
+            melbourne_bbox = {
+                'min_lat': -38.2255,
+                'max_lat': -37.5,
+                'min_lon': 144.18,
+                'max_lon': 145.375
+            }
+            melbourne_mask = (
+                (gdf_bounds['miny'] >= melbourne_bbox['min_lat']) &
+                (gdf_bounds['maxy'] <= melbourne_bbox['max_lat']) &
+                (gdf_bounds['minx'] >= melbourne_bbox['min_lon']) &
+                (gdf_bounds['maxx'] <= melbourne_bbox['max_lon'])
+            )
+            gdf = gdf[melbourne_mask].copy()
+            print(f"Filtered to {len(gdf)} SA2 areas within Melbourne metropolitan area")
+            tolerance = 0.001
+            gdf['geometry'] = gdf['geometry'].simplify(tolerance, preserve_topology=True)
+            metric = 'rent_to_income_ratio'
+            tooltip_fields = ['sa2_code', 'median_weekly_rent', 'median_weekly_income', 'rent_to_income_ratio']
+            print("Adding SA2 choropleth layer with proper boundaries...")
+            folium.Choropleth(
+                geo_data=gdf,
+                name='Rent to Income Ratio',
+                data=gdf,
+                columns=['sa2_code', metric],
+                key_on='feature.properties.sa2_code',
+                fill_color='YlOrRd',
+                fill_opacity=0.6,
+                line_opacity=0.4,
+                line_weight=1,
+                nan_fill_color='lightgray',
+                legend_name='Rent to Income Ratio'
+            ).add_to(m)
+            folium.GeoJson(
+                gdf,
+                name='SA2 Boundaries & Info',
+                style_function=lambda feature: {
+                    'fillColor': 'transparent',
+                    'color': '#2c3e50',
+                    'weight': 2,
+                    'opacity': 0.8,
+                    'fillOpacity': 0,
+                    'dashArray': '0'
+                },
+                highlight_function=lambda feature: {
+                    'fillColor': '#3498db',
+                    'color': '#2980b9',
+                    'weight': 3,
+                    'opacity': 1.0,
+                    'fillOpacity': 0.3
+                },
+                tooltip=GeoJsonTooltip(
+                    fields=tooltip_fields,
+                    aliases=['SA2 Code:', 'Weekly Rent ($):', 'Weekly Income ($):', 'Rent/Income Ratio:'],
+                    localize=True,
+                    sticky=True,
+                    labels=True,
+                    style="""
+                        background-color: white;
+                        border: 2px solid black;
+                        border-radius: 3px;
+                        box-shadow: 3px;
+                    """
+                ),
+                popup=folium.Popup(max_width=300)
+            ).add_to(m)
+        except Exception as e:
+            print(f"Could not add SA2 choropleth: {e}")
+
+    # Always try to add LGA safety layer
+    print("\nLoading LGA boundaries and safety scores...")
+    try:
+        gdf_lga = gpd.read_file("../data/external/LGA/LGA_2024_AUST_GDA2020.shp")
+        # Filter to Melbourne area using bounding box
+        gdf_lga = gdf_lga.to_crs(epsg=4326)
+        lga_bounds = gdf_lga.bounds
+        melbourne_bbox = {
+            'min_lat': -38.2255,
+            'max_lat': -37.5,
+            'min_lon': 144.18,
+            'max_lon': 145.375
+        }
+        melbourne_mask = (
+            (lga_bounds['miny'] >= melbourne_bbox['min_lat']) &
+            (lga_bounds['maxy'] <= melbourne_bbox['max_lat']) &
+            (lga_bounds['minx'] >= melbourne_bbox['min_lon']) &
+            (lga_bounds['maxx'] <= melbourne_bbox['max_lon'])
+        )
+        gdf_lga = gdf_lga[melbourne_mask].copy()
+        print(f"Filtered to {len(gdf_lga)} LGAs within Melbourne metropolitan area")
+        safety_df = load_safety_scores()
+        print(f"Loaded {len(safety_df)} safety records")
+    except Exception as e:
+        print(f"Error loading LGA boundaries or safety data: {e}")
+        gdf_lga = None
+        safety_df = None
+    if gdf_lga is not None and safety_df is not None and not safety_df.empty:
+        lga_name_col = None
+        for col in gdf_lga.columns:
+            if col.lower().startswith("lga") and ("name" in col.lower() or "_name" in col.lower()):
+                lga_name_col = col
+                break
+        if not lga_name_col:
+            lga_name_col = "LGA_NAME22" if "LGA_NAME22" in gdf_lga.columns else gdf_lga.columns[0]
+        gdf_lga["lga"] = gdf_lga[lga_name_col].astype(str).str.strip()
+        safety_df["lga"] = safety_df["lga"].astype(str).str.strip()
+        gdf_lga = gdf_lga.to_crs(epsg=4326)
+        gdf_lga = gdf_lga.merge(safety_df, on="lga", how="left")
+        print(f"Merged LGA boundaries with safety data: {len(gdf_lga)} records")
+        print("Adding LGA safety choropleth layer...")
+        safety_color_map = {
+            "High": "#2ecc40",
+            "Medium": "#ffdc00",
+            "Low": "#ff4136"
+        }
+        def lga_style(feature):
+            cat = feature["properties"].get("safety_category", "")
+            color = safety_color_map.get(cat, "#cccccc")
+            return {
+                'fillColor': color,
+                'color': '#333',
+                'weight': 2,
+                'fillOpacity': 0.5 if cat else 0,
+                'opacity': 0.7
+            }
+        lga_tooltip_fields = ["lga", "safety_score", "safety_category", "total_crime_count", "violent_crime_count", "property_crime_count", "drug_offence_count", "public_order_offence_count", "justice_procedures_offence_count"]
+        lga_tooltip_aliases = ["LGA:", "Safety Score:", "Safety Category:", "Total Crimes:", "Violent Crimes:", "Property Crimes:", "Drug Offences:", "Public Order Offences:", "Justice Procedures Offences:"]
+        folium.GeoJson(
+            gdf_lga,
+            name="LGA Safety Levels",
+            style_function=lga_style,
+            highlight_function=lambda f: {'weight': 4, 'color': '#0074D9', 'fillOpacity': 0.7},
+            tooltip=GeoJsonTooltip(
+                fields=lga_tooltip_fields,
+                aliases=lga_tooltip_aliases,
+                localize=True,
+                sticky=True,
+                labels=True,
+                style="""
+                    background-color: white;
+                    border: 2px solid black;
+                    border-radius: 3px;
+                    box-shadow: 3px;
+                """
+            ),
+            popup=folium.Popup(max_width=350)
+        ).add_to(m)
+
     # Add amenity markers if available
     if not df_amenities.empty:
         print("Adding amenity markers...")
-        
         # Define colors and icons for each amenity category
         category_styles = {
             'supermarket': {'color': 'blue', 'icon': 'shopping-cart', 'prefix': 'fa'},
@@ -159,7 +221,6 @@ def create_combined_map():
             'gym': {'color': 'red', 'icon': 'dumbbell', 'prefix': 'fa'},
             'library': {'color': 'green', 'icon': 'book', 'prefix': 'fa'}
         }
-        
         # Create marker clusters for each amenity category
         marker_clusters = {}
         for category in df_amenities['category'].unique():
@@ -172,12 +233,10 @@ def create_combined_map():
             )
             marker_clusters[category] = cluster
             m.add_child(cluster)
-        
         # Add amenity markers
         for idx, row in df_amenities.iterrows():
             category = row['category']
             style = category_styles.get(category, {'color': 'gray', 'icon': 'info-sign', 'prefix': 'glyphicon'})
-            
             # Create popup content
             popup_content = f"""
             <div style="width: 200px;">
@@ -190,7 +249,6 @@ def create_combined_map():
                    Lon: {row['lon']:.4f}</p>
             </div>
             """
-            
             # Create marker
             marker = folium.Marker(
                 location=[row['lat'], row['lon']],
@@ -202,7 +260,6 @@ def create_combined_map():
                     prefix=style['prefix']
                 )
             )
-            
             # Add to appropriate cluster
             marker_clusters[category].add_child(marker)
     
@@ -289,7 +346,7 @@ def create_amenities_only_map():
     # Define colors and icons for each category
     category_styles = {
         'supermarket': {'color': 'blue', 'icon': 'shopping-cart', 'prefix': 'fa'},
-        'cafe': {'color': 'brown', 'icon': 'coffee', 'prefix': 'fa'},
+        'cafe': {'color': 'orange', 'icon': 'coffee', 'prefix': 'fa'},
         'gym': {'color': 'red', 'icon': 'dumbbell', 'prefix': 'fa'},
         'library': {'color': 'green', 'icon': 'book', 'prefix': 'fa'}
     }
@@ -348,7 +405,7 @@ def create_amenities_only_map():
                 font-size:14px; padding: 10px">
     <h4>Amenity Categories</h4>
     <p><i class="fa fa-shopping-cart" style="color:blue"></i> Supermarkets</p>
-    <p><i class="fa fa-coffee" style="color:brown"></i> Cafes</p>
+    <p><i class="fa fa-coffee" style="color:orange"></i> Cafes</p>
     <p><i class="fa fa-dumbbell" style="color:red"></i> Gyms</p>
     <p><i class="fa fa-book" style="color:green"></i> Libraries</p>
     </div>

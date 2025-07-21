@@ -144,6 +144,23 @@ class SupabaseDataLoader:
             print(f"ERROR: Connection test failed: {e}")
             return False
 
+    def get_all_safety_scores(self) -> pd.DataFrame:
+        """Get all safety scores data from Supabase."""
+        if not self.supabase:
+            print("No Supabase connection available")
+            return pd.DataFrame()
+        try:
+            result = self.supabase.table("safety_scores").select("*").execute()
+            df = pd.DataFrame(result.data)
+            if not df.empty:
+                print(f"SUCCESS: Loaded {len(df)} safety score records from database")
+            else:
+                print("WARNING: No safety scores found in database")
+            return df
+        except Exception as e:
+            print(f"ERROR: Error loading safety scores: {e}")
+            return pd.DataFrame()
+
 # Global instance for easy importing
 loader = SupabaseDataLoader()
 
@@ -154,16 +171,24 @@ def load_amenities_data() -> pd.DataFrame:
 
 def load_demographics_data() -> pd.DataFrame:
     """Load demographics data from CSV (fallback until demographics are in Supabase)."""
+    import os
     try:
-        df = pd.read_csv("data/processed/abs_demographics_merged.csv")
+        # Use robust path relative to project root or this file
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        csv_path = os.path.join(base_dir, 'data', 'processed', 'abs_demographics_merged.csv')
+        df = pd.read_csv(csv_path)
         print(f"SUCCESS: Loaded {len(df)} demographic records from CSV")
         return df
     except FileNotFoundError:
-        print("WARNING: Demographics CSV file not found")
+        print(f"WARNING: Demographics CSV file not found at {csv_path}")
         return pd.DataFrame()
     except Exception as e:
         print(f"ERROR: Error loading demographics: {e}")
         return pd.DataFrame()
+
+def load_safety_scores() -> pd.DataFrame:
+    """Load all safety scores from Supabase."""
+    return loader.get_all_safety_scores()
 
 def get_amenities_by_category(category: str) -> pd.DataFrame:
     """Get amenities by category from Supabase."""
