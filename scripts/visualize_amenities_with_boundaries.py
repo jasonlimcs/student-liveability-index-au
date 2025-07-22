@@ -5,6 +5,7 @@ from folium import plugins
 from folium.features import GeoJsonTooltip
 import numpy as np
 import sys
+import json
 
 # Add data loading modules
 sys.path.append('../src')
@@ -264,6 +265,23 @@ def create_combined_map():
             )
             # Add to appropriate cluster
             marker_clusters[category].add_child(marker)
+    
+    # Add university markers (Melbourne area only)
+    try:
+        with open("../config/universities.json", "r", encoding="utf-8") as f:
+            universities = json.load(f)
+        # Only show universities in Victoria (lat -38.3 to -37.5, lon 144.5 to 145.5)
+        melb_unis = [u for u in universities if -38.3 < u["lat"] < -37.5 and 144.5 < u["lon"] < 145.5]
+        for uni in melb_unis:
+            folium.Marker(
+                location=[uni["lat"], uni["lon"]],
+                popup=folium.Popup(f'<b>{uni["name"]}</b>', max_width=250),
+                tooltip=uni["name"],
+                icon=folium.Icon(color='purple', icon='university', prefix='fa')
+            ).add_to(m)
+        print(f"Added {len(melb_unis)} university markers to the map.")
+    except Exception as e:
+        print(f"Error adding university markers: {e}")
     
     # Add enhanced legend
     legend_html = '''
