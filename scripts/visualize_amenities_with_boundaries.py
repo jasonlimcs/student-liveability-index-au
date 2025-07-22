@@ -12,11 +12,10 @@ sys.path.append('../src')
 from data.supabase_loader import load_amenities_data, load_demographics_data, load_safety_scores
 
 def create_university_travel_zones(map_obj, universities_data):
-    """Create travel time zones around universities."""
-    print("Adding university travel time zones...")
+    """Create travel time zones around universities as individual toggle-able layers."""
+    print("Setting up university travel zones as individual layers...")
     
-    # Define travel zones (approximate distances in km for different transport modes)
-    # 15 min = ~8km, 30 min = ~16km, 45 min = ~25km (mixed public transport/cycling)
+    # Define travel zones
     zones = [
         {'time': 15, 'radius_km': 8, 'color': '#2ecc40', 'opacity': 0.15},   # Green - Close
         {'time': 30, 'radius_km': 16, 'color': '#ffdc00', 'opacity': 0.1},   # Yellow - Medium  
@@ -26,12 +25,16 @@ def create_university_travel_zones(map_obj, universities_data):
     # Filter for Melbourne universities only
     melbourne_unis = [u for u in universities_data if -38.3 < u["lat"] < -37.2 and 144.3 < u["lon"] < 145.9]
     
-    # Create a feature group for travel zones
-    travel_zones_group = folium.FeatureGroup(name="University Travel Zones", show=True)
-    
-    for uni in melbourne_unis:
+    # Create separate feature groups for each university's travel zones
+    for i, uni in enumerate(melbourne_unis):
         uni_name = uni["name"]
         uni_lat, uni_lon = uni["lat"], uni["lon"]
+        
+        # Create a unique group for this university's zones (initially hidden)
+        zone_group = folium.FeatureGroup(
+            name=f"Travel Zones: {uni_name}", 
+            show=False  # Start hidden
+        )
         
         # Add zones for this university (largest to smallest for proper layering)
         for zone in reversed(zones):
@@ -50,12 +53,13 @@ def create_university_travel_zones(map_obj, universities_data):
                     max_width=200
                 ),
                 tooltip=f"{uni_name}: ~{zone['time']} min zone"
-            ).add_to(travel_zones_group)
+            ).add_to(zone_group)
+        
+        # Add the group to the map
+        zone_group.add_to(map_obj)
     
-    # Add the feature group to the map
-    travel_zones_group.add_to(map_obj)
-    
-    print(f"Added travel zones for {len(melbourne_unis)} Melbourne universities")
+    print(f"Created individual travel zone layers for {len(melbourne_unis)} universities")
+    print("Use the layer control (top-left) to toggle zones for specific universities")
     return melbourne_unis
 
 def create_combined_map():
@@ -343,23 +347,45 @@ def create_combined_map():
     try:
         with open("../config/universities.json", "r", encoding="utf-8") as f:
             universities = json.load(f)
-        # Only show universities in Victoria (lat -38.3 to -37.5, lon 144.5 to 145.5)
-        melb_unis = [u for u in universities if -38.3 < u["lat"] < -37.5 and 144.5 < u["lon"] < 145.5]
-        for uni in melb_unis:
+        
+        # Add travel time zones around universities
+        melbourne_unis = create_university_travel_zones(m, universities)
+        
+        # Add university markers with clear instructions about travel zones
+        for i, uni in enumerate(melbourne_unis):
+            uni_name = uni["name"]
+            
+            # Create informative popup
+            popup_html = f"""
+            <div style="text-align: center;">
+                <h4 style="margin: 5px 0; color: #9b59b6;">{uni_name}</h4>
+                <hr style="margin: 8px 0;">
+                <p style="margin: 5px 0; font-size: 13px; color: #333;">
+                    <strong>To see travel zones:</strong><br>
+                    Use Layer Control (top-left) &rarr;<br>
+                    Check "Travel Zones: {uni_name}"
+                </p>
+                <p style="margin: 5px 0; font-size: 12px; color: #666;">
+                    Shows 15/30/45 minute commute areas
+                </p>
+            </div>
+            """
+            
             folium.Marker(
                 location=[uni["lat"], uni["lon"]],
-                popup=folium.Popup(f'<b>{uni["name"]}</b>', max_width=250),
-                tooltip=uni["name"],
+                popup=folium.Popup(popup_html, max_width=280),
+                tooltip=f"{uni_name} - Use layer control to show travel zones",
                 icon=folium.Icon(color='purple', icon='university', prefix='fa')
             ).add_to(m)
-        print(f"Added {len(melb_unis)} university markers to the map.")
+        
+        print(f"Added {len(melbourne_unis)} interactive university markers with travel zones.")
     except Exception as e:
-        print(f"Error adding university markers: {e}")
+        print(f"Error adding university markers and travel zones: {e}")
     
     # Add enhanced legend
     legend_html = '''
     <div style="position: fixed; 
-                top: 10px; right: 10px; width: 280px; height: 280px; 
+                top: 10px; right: 10px; width: 300px; height: 360px; 
                 background-color: white; border:2px solid grey; z-index:9999; 
                 font-size:14px; padding: 15px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
     <h4 style="margin-top: 0; color: #2c3e50;">Map Legend</h4>
@@ -383,8 +409,13 @@ def create_combined_map():
     
     legend_html += '''
     <hr style="margin: 10px 0;">
-    <h5 style="color: #9b59b6;">Universities</h5>
+    <h5 style="color: #9b59b6;">Universities & Travel Zones</h5>
     <p style="margin: 3px 0;"><i class="fa fa-university" style="color:purple"></i> Major Universities</p>
+    <p style="margin: 3px 0; font-size: 12px; color: #666;"><strong>Travel Zones (use layer control):</strong></p>
+    <p style="margin: 3px 0;"><span style="background: #2ecc40; padding: 2px 8px; border-radius: 3px; color: white;">&bull;</span> ~15 min (8km)</p>
+    <p style="margin: 3px 0;"><span style="background: #ffdc00; padding: 2px 8px; border-radius: 3px; color: black;">&bull;</span> ~30 min (16km)</p>
+    <p style="margin: 3px 0;"><span style="background: #ff851b; padding: 2px 8px; border-radius: 3px; color: white;">&bull;</span> ~45 min (25km)</p>
+    <p style="font-size: 12px; color: #7f8c8d; margin: 5px 0;">Toggle individual university zones in layer control (top-left)</p>
     '''
     
     legend_html += '</div>'
@@ -414,6 +445,8 @@ def create_combined_map():
     print("- Use layer control to toggle different data layers")
     print("- Toggle between Rent-to-Income and Student Population choropleth layers")
     print("- Student population data shows percentage of tertiary students per area")
+    print("- Use layer control (top-left) to show/hide travel zones for specific universities")
+    print("- Travel zones show approximate 15/30/45 minute commute areas by public transport")
     
     return m, df_amenities if not df_amenities.empty else None, gdf
 
