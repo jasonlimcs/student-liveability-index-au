@@ -11,6 +11,53 @@ import json
 sys.path.append('../src')
 from data.supabase_loader import load_amenities_data, load_demographics_data, load_safety_scores
 
+def create_university_travel_zones(map_obj, universities_data):
+    """Create travel time zones around universities."""
+    print("Adding university travel time zones...")
+    
+    # Define travel zones (approximate distances in km for different transport modes)
+    # 15 min = ~8km, 30 min = ~16km, 45 min = ~25km (mixed public transport/cycling)
+    zones = [
+        {'time': 15, 'radius_km': 8, 'color': '#2ecc40', 'opacity': 0.15},   # Green - Close
+        {'time': 30, 'radius_km': 16, 'color': '#ffdc00', 'opacity': 0.1},   # Yellow - Medium  
+        {'time': 45, 'radius_km': 25, 'color': '#ff851b', 'opacity': 0.08}   # Orange - Far
+    ]
+    
+    # Filter for Melbourne universities only
+    melbourne_unis = [u for u in universities_data if -38.3 < u["lat"] < -37.2 and 144.3 < u["lon"] < 145.9]
+    
+    # Create a feature group for travel zones
+    travel_zones_group = folium.FeatureGroup(name="University Travel Zones", show=True)
+    
+    for uni in melbourne_unis:
+        uni_name = uni["name"]
+        uni_lat, uni_lon = uni["lat"], uni["lon"]
+        
+        # Add zones for this university (largest to smallest for proper layering)
+        for zone in reversed(zones):
+            radius_meters = zone['radius_km'] * 1000
+            
+            folium.Circle(
+                location=[uni_lat, uni_lon],
+                radius=radius_meters,
+                color=zone['color'],
+                fillColor=zone['color'],
+                fillOpacity=zone['opacity'],
+                weight=2,
+                opacity=0.6,
+                popup=folium.Popup(
+                    f"<b>{uni_name}</b><br>~{zone['time']} min travel zone<br>({zone['radius_km']}km radius)",
+                    max_width=200
+                ),
+                tooltip=f"{uni_name}: ~{zone['time']} min zone"
+            ).add_to(travel_zones_group)
+    
+    # Add the feature group to the map
+    travel_zones_group.add_to(map_obj)
+    
+    print(f"Added travel zones for {len(melbourne_unis)} Melbourne universities")
+    return melbourne_unis
+
 def create_combined_map():
     """Create an interactive folium map showing Melbourne SA2 demographics and amenities with proper boundaries."""
     
@@ -86,8 +133,10 @@ def create_combined_map():
             print(f"Filtered to {len(gdf)} SA2 areas within Melbourne metropolitan area")
             tolerance = 0.001
             gdf['geometry'] = gdf['geometry'].simplify(tolerance, preserve_topology=True)
+            
+            # Add rent-to-income ratio choropleth
             metric = 'rent_to_income_ratio'
-            tooltip_fields = ['sa2_code', 'sa2_name', 'median_weekly_rent', 'median_weekly_income', 'rent_to_income_ratio']
+            tooltip_fields = ['sa2_code', 'sa2_name', 'median_weekly_rent', 'median_weekly_income', 'rent_to_income_ratio', 'pct_students']
             print("Adding SA2 choropleth layer with proper boundaries...")
             folium.Choropleth(
                 geo_data=gdf,
@@ -100,8 +149,27 @@ def create_combined_map():
                 line_opacity=0.4,
                 line_weight=1,
                 nan_fill_color='lightgray',
-                legend_name='Rent to Income Ratio'
+                legend_name='Rent to Income Ratio',
+                show=True
             ).add_to(m)
+            
+            # Add student population choropleth
+            print("Adding student population choropleth layer...")
+            folium.Choropleth(
+                geo_data=gdf,
+                name='Student Population %',
+                data=gdf,
+                columns=['sa2_code', 'pct_students'],
+                key_on='feature.properties.sa2_code',
+                fill_color='Blues',
+                fill_opacity=0.6,
+                line_opacity=0.4,
+                line_weight=1,
+                nan_fill_color='lightgray',
+                legend_name='Student Population %',
+                show=False  # Start hidden, user can toggle
+            ).add_to(m)
+            
             folium.GeoJson(
                 gdf,
                 name='SA2 Boundaries & Info',
@@ -122,7 +190,7 @@ def create_combined_map():
                 },
                 tooltip=GeoJsonTooltip(
                     fields=tooltip_fields,
-                    aliases=['SA2 Code:', 'SA2 Name:', 'Weekly Rent ($):', 'Weekly Income ($):', 'Rent/Income Ratio:'],
+                    aliases=['SA2 Code:', 'SA2 Name:', 'Weekly Rent ($):', 'Weekly Income ($):', 'Rent/Income Ratio:', 'Student Population %:'],
                     localize=True,
                     sticky=True,
                     labels=True,
@@ -291,25 +359,33 @@ def create_combined_map():
     # Add enhanced legend
     legend_html = '''
     <div style="position: fixed; 
-                top: 10px; right: 10px; width: 250px; height: 220px; 
+                top: 10px; right: 10px; width: 280px; height: 280px; 
                 background-color: white; border:2px solid grey; z-index:9999; 
                 font-size:14px; padding: 15px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
     <h4 style="margin-top: 0; color: #2c3e50;">Map Legend</h4>
     <hr style="margin: 10px 0;">
-    <h5 style="color: #e74c3c;">Rent-to-Income Ratio</h5>
-    <p style="margin: 5px 0;"><span style="background: #ffffcc; padding: 2px 5px; border: 1px solid #ccc;">Low</span> to <span style="background: #bd0026; color: white; padding: 2px 5px;">High</span></p>
+    <h5 style="color: #e74c3c;">Choropleth Layers</h5>
+    <p style="margin: 5px 0;"><span style="background: #ffffcc; padding: 2px 5px; border: 1px solid #ccc;">Rent-to-Income Ratio</span> to <span style="background: #bd0026; color: white; padding: 2px 5px;">High</span></p>
+    <p style="margin: 5px 0;"><span style="background: #f7fbff; padding: 2px 5px; border: 1px solid #ccc;">Student Population %</span> to <span style="background: #08519c; color: white; padding: 2px 5px;">High</span></p>
+    <p style="font-size: 12px; color: #7f8c8d; margin: 5px 0;">Use layer control to toggle between views</p>
     <p style="font-size: 12px; color: #7f8c8d; margin: 5px 0;">Click suburbs to see exact boundaries</p>
     '''
     
     if not df_amenities.empty:
         legend_html += '''
         <hr style="margin: 10px 0;">
-        <h5 style="color: #2c3e50;">Amenities</h5>
+        <h5 style="color: #2c3e50;">Student Amenities</h5>
         <p style="margin: 3px 0;"><i class="fa fa-shopping-cart" style="color:blue"></i> Supermarkets</p>
-        <p style="margin: 3px 0;"><i class="fa fa-coffee" style="color:orange"></i> Cafes</p>
-        <p style="margin: 3px 0;"><i class="fa fa-dumbbell" style="color:red"></i> Gyms</p>
+        <p style="margin: 3px 0;"><i class="fa fa-coffee" style="color:orange"></i> Cafes & Study Spots</p>
+        <p style="margin: 3px 0;"><i class="fa fa-dumbbell" style="color:red"></i> Gyms & Fitness</p>
         <p style="margin: 3px 0;"><i class="fa fa-book" style="color:green"></i> Libraries</p>
         '''
+    
+    legend_html += '''
+    <hr style="margin: 10px 0;">
+    <h5 style="color: #9b59b6;">Universities</h5>
+    <p style="margin: 3px 0;"><i class="fa fa-university" style="color:purple"></i> Major Universities</p>
+    '''
     
     legend_html += '</div>'
     m.get_root().html.add_child(folium.Element(legend_html))
@@ -336,6 +412,8 @@ def create_combined_map():
     print("- Hover over SA2 areas to see tooltips with demographic info")
     print("- Click SA2 areas to highlight exact boundaries (not rectangles)")
     print("- Use layer control to toggle different data layers")
+    print("- Toggle between Rent-to-Income and Student Population choropleth layers")
+    print("- Student population data shows percentage of tertiary students per area")
     
     return m, df_amenities if not df_amenities.empty else None, gdf
 
