@@ -19,6 +19,11 @@ def create_combined_map():
     gdf_sa2 = None
     try:
         demographics = load_demographics_data()
+        # Add SA2 names to demographics
+        sa2_names = pd.read_csv("../data/raw/sa2_names.csv", usecols=[0,1], dtype={"SA2_CODE_2021":str, "SA2_NAME_2021":str})
+        sa2_names.columns = ["sa2_code", "sa2_name"]
+        demographics["sa2_code"] = demographics["sa2_code"].astype(str)
+        demographics = demographics.merge(sa2_names, on="sa2_code", how="left")
         gdf_sa2 = gpd.read_file("../data/external/SA2_2021_AUST_GDA2020.shp")
         print(f"Loaded demographics for {len(demographics)} SA2 areas")
         print(f"Loaded geometry data for {len(gdf_sa2)} SA2 areas")
@@ -82,7 +87,7 @@ def create_combined_map():
             tolerance = 0.001
             gdf['geometry'] = gdf['geometry'].simplify(tolerance, preserve_topology=True)
             metric = 'rent_to_income_ratio'
-            tooltip_fields = ['sa2_code', 'median_weekly_rent', 'median_weekly_income', 'rent_to_income_ratio']
+            tooltip_fields = ['sa2_code', 'sa2_name', 'median_weekly_rent', 'median_weekly_income', 'rent_to_income_ratio']
             print("Adding SA2 choropleth layer with proper boundaries...")
             folium.Choropleth(
                 geo_data=gdf,
@@ -117,7 +122,7 @@ def create_combined_map():
                 },
                 tooltip=GeoJsonTooltip(
                     fields=tooltip_fields,
-                    aliases=['SA2 Code:', 'Weekly Rent ($):', 'Weekly Income ($):', 'Rent/Income Ratio:'],
+                    aliases=['SA2 Code:', 'SA2 Name:', 'Weekly Rent ($):', 'Weekly Income ($):', 'Rent/Income Ratio:'],
                     localize=True,
                     sticky=True,
                     labels=True,
