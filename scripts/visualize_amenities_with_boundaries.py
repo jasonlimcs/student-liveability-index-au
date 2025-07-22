@@ -168,6 +168,8 @@ def create_combined_map():
         if not lga_name_col:
             lga_name_col = "LGA_NAME22" if "LGA_NAME22" in gdf_lga.columns else gdf_lga.columns[0]
         gdf_lga["lga"] = gdf_lga[lga_name_col].astype(str).str.strip()
+        # Remove ' (Vic.)' from the end of LGA names for matching
+        gdf_lga["lga"] = gdf_lga["lga"].str.replace(r"\s*\(Vic\.\)$", "", regex=True).str.strip()
         safety_df["lga"] = safety_df["lga"].astype(str).str.strip()
         gdf_lga = gdf_lga.to_crs(epsg=4326)
         gdf_lga = gdf_lga.merge(safety_df, on="lga", how="left")
