@@ -57,16 +57,9 @@ export default function Home() {
         {activeTab === 'maps' && (
           <div className="space-y-8">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-semibold mb-4">Interactive Maps</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-lg font-medium mb-3">Amenities Distribution</h3>
-                  <MapViewer mapType="amenities" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium mb-3">Combined Liveability Analysis</h3>
-                  <MapViewer mapType="combined" />
-                </div>
+              <h2 className="text-2xl font-semibold mb-4">Interactive Combined Liveability Map</h2>
+              <div className="w-full">
+                <MapViewer mapType="combined" fullHeight={true} />
               </div>
             </div>
           </div>

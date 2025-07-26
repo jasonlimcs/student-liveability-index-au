@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 
 interface MapViewerProps {
   mapType: 'amenities' | 'combined'
+  fullHeight?: boolean
 }
 
-export default function MapViewer({ mapType }: MapViewerProps) {
+export default function MapViewer({ mapType, fullHeight = false }: MapViewerProps) {
   const [mapContent, setMapContent] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,9 +41,13 @@ export default function MapViewer({ mapType }: MapViewerProps) {
     loadMap()
   }, [mapType])
 
+  const containerClass = fullHeight 
+    ? "w-full h-screen" 
+    : "w-full h-96"
+
   if (loading) {
     return (
-      <div className="map-container flex items-center justify-center bg-gray-100">
+      <div className={`${containerClass} flex items-center justify-center bg-gray-100 rounded-lg`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
           <p className="text-gray-600">Loading map...</p>
@@ -53,7 +58,7 @@ export default function MapViewer({ mapType }: MapViewerProps) {
 
   if (error) {
     return (
-      <div className="map-container flex items-center justify-center bg-gray-100">
+      <div className={`${containerClass} flex items-center justify-center bg-gray-100 rounded-lg`}>
         <div className="text-center">
           <p className="text-red-600 mb-2">Error loading map</p>
           <p className="text-sm text-gray-600">{error}</p>
@@ -63,11 +68,11 @@ export default function MapViewer({ mapType }: MapViewerProps) {
   }
 
   return (
-    <div className="map-container">
+    <div className={`${containerClass} rounded-lg overflow-hidden shadow-lg`}>
       <iframe
         srcDoc={mapContent}
         title={`Melbourne ${mapType === 'amenities' ? 'Amenities' : 'Combined Analysis'} Map`}
-        className="w-full h-full"
+        className="w-full h-full border-0"
         sandbox="allow-scripts allow-same-origin"
       />
     </div>
