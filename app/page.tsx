@@ -1,22 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { MapPin, Users, Building2, Coffee, Bus, BookOpen, TrendingUp } from 'lucide-react'
+import { useState } from 'react'
+import { MapPin, Users } from 'lucide-react'
 import MapViewer from './components/MapViewer'
 import StatisticsDashboard from './components/StatisticsDashboard'
 import Navigation from './components/Navigation'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [mapData, setMapData] = useState<any>(null)
-
-  useEffect(() => {
-    // Load map data
-    fetch('/api/maps')
-      .then(res => res.json())
-      .then(data => setMapData(data))
-      .catch(err => console.error('Error loading map data:', err))
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
